@@ -1,8 +1,9 @@
 FROM debian:stretch
 
 ARG TESS="4.00.00dev"
-ARG LEPTO="1.74.4"
+ARG LEPTO="1.74.2"
 
+# Prepare dependencies
 RUN apt-get update
 RUN apt-get install -y \
   wget \
@@ -20,13 +21,14 @@ RUN apt-get install -y \
   libpango1.0-dev \
   libcairo2-dev
 
-RUN mkdir -p /leptonica
-RUN mkdir -p /tesseract
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
 
+# Compile Leptonica
 WORKDIR /
 RUN mkdir -p /tmp/leptonica \
   && wget https://github.com/DanBloomberg/leptonica/archive/${LEPTO}.tar.gz \
-  && tar -xzvf ${LEPTO}.tar.gz -C /tmp/leptonica
+  && tar -xzvf ${LEPTO}.tar.gz -C /tmp/leptonica \
+  && mv /tmp/leptonica/* /leptonica
 WORKDIR /leptonica
 
 RUN autoreconf -i \
@@ -35,11 +37,12 @@ RUN autoreconf -i \
   && make \
   && make install
 
+# Compile Tesseract
 WORKDIR /
-RUN mkdir /tesseract \
+RUN mkdir -p /tmp/tesseract \
   && wget https://github.com/tesseract-ocr/tesseract/archive/${TESS}.tar.gz \
-  && tar -xzvf ${TESS}.tar.gz -C /tesseract \
-  && mv /tesseract/*
+  && tar -xzvf ${TESS}.tar.gz -C /tmp/tesseract \
+  && mv /tmp/tesseract/* /tesseract
 WORKDIR /tesseract
 
 RUN ./autogen.sh \
@@ -47,4 +50,12 @@ RUN ./autogen.sh \
   && make \
   && make install
 
+# Recover location
 WORKDIR /
+
+# Load languages
+RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/eng.traineddata -P /usr/local/share/tessdata
+RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/deu.traineddata -P /usr/local/share/tessdata
+RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/fra.traineddata -P /usr/local/share/tessdata
+RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/spa.traineddata -P /usr/local/share/tessdata
+RUN wget https://github.com/tesseract-ocr/tessdata/raw/master/jpn.traineddata -P /usr/local/share/tessdata
